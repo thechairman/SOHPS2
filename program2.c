@@ -43,7 +43,7 @@ int main(int argc, char* argv[]){
 	numVars = atoi(start);
 
 	//move to the start of next line
-	while(start != '\n'){
+	while(*start != '\n'){
 		++start;
 	}
 	++start;
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
 	numTerms = atoi(start);
 	
 	//move to the start of next line
-	while(start != '\n'){
+	while(*start != '\n'){
 		++start;
 	}
 	++start;
