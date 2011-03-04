@@ -127,6 +127,55 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
     return essential;
 }
 
+void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> implicants){
+    char fmt[50];
+    snprintf(fmt, 50, "%%%ds", implicants[0]->len + 2);
+    printf(fmt, " ");
+    for (int i = 0; i < terms.size(); ++i){
+        printf(" %s ", terms[i]->bits);
+    }
+    printf("\n");
+
+    for (int i = 0; i < implicants.size(); ++i){
+        printf("%s  ", implicants[i]->bits);
+        for(int k = 0; k < terms.size(); ++k){
+            snprintf(fmt, 50, " %%%ds%%s%%%ds ", (terms[k]->len)/2-1, (terms[k]->len)/2);
+            printf(fmt, " ", table[i][k] ? "x" : " ", " "); 
+        }
+        printf("\n");
+    }
+}
+// Build the Prime Implicant Chart
+bool** buildPI(std::vector<Term*> terms, std::vector<Term*> implicants){
+    // create table
+    bool** table = new bool*[implicants.size()];
+    for(int i = 0; i < implicants.size(); ++i){
+        table[i] = new bool[terms.size()];
+        memset(table[i], 0, terms.size());
+    }
+    
+    // fill it in
+    for (int i = 0; i < implicants.size(); ++i){
+        for(int k = 0; k < terms.size(); ++k){
+            bool covers = true;
+            for (int m = 0; m < implicants[i]->len; ++m){
+                // if implicant bit == 0 and term bit isn't, 
+                // this implicant does not cover the term
+                if (implicants[i]->bits[m] == '0' && terms[k]->bits[m] != '0')
+                    covers = false;
+                // if implicant bit == 1 and term bit isn't, 
+                // this implicant does not cover the term
+                else if (implicants[i]->bits[m] == '1' && terms[k]->bits[m] != '1')
+                    covers = false;
+            }
+            if (covers){
+                table[i][k] = true;
+            }
+        }
+    }
+    return table;
+}
+
 int main(int argc, char** argv){
     // get input filename
     if (argc < 2){
@@ -183,4 +232,26 @@ int main(int argc, char** argv){
 
     printf("Merged Terms:\n");
     printTerms(merged);
+
+
+    // clear essential flags
+    for (int i = 0; i < terms.size(); ++i){
+        terms[i]->essential = false;
+    }
+    for (int i = 0; i < merged.size(); ++i){
+        merged[i]->essential = false;
+    }
+    
+    // get the terms = 1
+    // TODO: decide whether this should copy the term or just use the old one
+    std::vector<Term*> ones;
+    for (int i = 0; i < terms.size(); ++i){
+        if (terms[i]->dontcare == false)
+            ones.push_back(terms[i]);
+    }
+            
+    // build prime implicant chart
+    bool** pichart = buildPI(ones, merged);
+
+    printPIchart(pichart, ones, merged);
 }
