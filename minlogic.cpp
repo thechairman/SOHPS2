@@ -47,8 +47,10 @@ void printTerms(std::vector<Term*> terms){
     }
 }
 
-// this could be made more efficient... 
+// TODO: this could be made more efficient... 
 // we shouldn't need to compare every term to every other term.
+// mergeTermsOnce returns a new vector of merged terms, 
+// and modifies the terms in the input vector to mark those that are essential
 std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
     std::vector<Term*> newterms;
     // mark all terms essential
@@ -75,7 +77,7 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
                     }
                 }
             }
-            // if there was a single bit difference
+            // if there was a single bit difference, merge
             if (bitdiff > -1){
                 terms[i]->essential = false;
                 terms[k]->essential = false;
@@ -106,10 +108,13 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
 
     std::vector<Term*> essential;
     bool done = false;
+    // loop until nothing can be merged.
     while(done == false){
+        // TODO: Fix memory leak -- delete the Terms in lastmerged first.
         lastmerged = merged;
         merged = mergeTermsOnce(lastmerged);
 
+        // add anything that couldn't be merged to the essential vector
         for(int i = 0; i < lastmerged.size(); ++i){
             if (lastmerged[i]->essential){
                 Term* newterm = new Term(*lastmerged[i]);
