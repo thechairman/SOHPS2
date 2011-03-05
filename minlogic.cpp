@@ -17,18 +17,24 @@ struct Term{
     bool essential;
     int len;
     int copied;
+
+    //intiallize an empty term struct
     Term(int sz = 4) : dontcare(false), essential(false), len(sz),copied(0) {
         bits = new char[sz+1]; 
         memset(bits, '0', sz); 
         bits[sz] = 0;
     }
     ~Term() {delete bits;}
+
+    //create a clone of another term, incrementing the copied counter
     Term( const Term& other ) :
         dontcare(other.dontcare), essential(other.essential), len(other.len),copied(other.copied+1) { 
             bits = new char[len+1];
             strncpy(bits, other.bits, len+1);
             bits[len] = 0;
         }
+
+    //overload the 'equals'comparaison operateer
     bool operator== (const Term& other){
         if (strncmp(bits, other.bits, len) == 0)
             if (dontcare == other.dontcare && essential == other.essential && len == other.len)
@@ -37,6 +43,8 @@ struct Term{
     }
 };
 
+//displays everything in the term vector one term per line
+//
 void printTerms(std::vector<Term*> terms){
     // for each term
     for (int i = 0; i < terms.size(); ++i){
@@ -53,6 +61,7 @@ void printTerms(std::vector<Term*> terms){
 // and modifies the terms in the input vector to mark those that are essential
 std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
     std::vector<Term*> newterms;
+
     // mark all terms essential
     for(int i = 0; i < terms.size(); ++i){
         if (terms[i]->dontcare == false)
@@ -111,6 +120,15 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
     // loop until nothing can be merged.
     while(done == false){
         // TODO: Fix memory leak -- delete the Terms in lastmerged first.
+	// if i understood what you meant then i fixed the memory leak
+	
+	std::vector<Term*>::iterator it;
+	for (it = lastmerged.begin(); it != lastmerged.end(); ++it){
+		delete (*it);	
+	}
+
+	lastmerged.erase(lastmerged.begin(), lastmerged.end());
+
         lastmerged = merged;
         merged = mergeTermsOnce(lastmerged);
 
