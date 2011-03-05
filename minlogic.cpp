@@ -24,7 +24,7 @@ struct Term{
         memset(bits, '0', sz); 
         bits[sz] = 0;
     }
-    ~Term() {delete bits;}
+    ~Term() {delete[] bits;}
 
     //create a clone of another term, incrementing the copied counter
     Term( const Term& other ) :
@@ -103,6 +103,7 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
         for (int k = i+1; k < newterms.size(); ++k){
             // if 2 entries match, remove the latter one and continue
             if (strncmp(newterms[i]->bits, newterms[k]->bits, newterms[i]->len) == 0){
+                delete newterms[k];
                 newterms.erase(newterms.begin() + k);
                 k--;
             }
@@ -112,22 +113,27 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
 }
 
 std::vector<Term*> mergeTerms(std::vector<Term*> terms){
-    std::vector<Term*> merged = terms;
+    std::vector<Term*> merged;
     std::vector<Term*> lastmerged;
 
     std::vector<Term*> essential;
+
+    // copy terms into merged
+    std::vector<Term*>::iterator it;
+    for (it = terms.begin(); it != terms.end(); ++it){
+        Term* copy = new Term(*(*it));
+        merged.push_back(copy);
+    }
+
     bool done = false;
     // loop until nothing can be merged.
     while(done == false){
         // TODO: Fix memory leak -- delete the Terms in lastmerged first.
-	// if i understood what you meant then i fixed the memory leak
-	
-	std::vector<Term*>::iterator it;
-	for (it = lastmerged.begin(); it != lastmerged.end(); ++it){
-		delete (*it);	
-	}
-
-	lastmerged.erase(lastmerged.begin(), lastmerged.end());
+        // if i understood what you meant then i fixed the memory leak
+        
+        for (it = lastmerged.begin(); it != lastmerged.end(); ++it){
+            delete (*it);	
+        }
 
         lastmerged = merged;
         merged = mergeTermsOnce(lastmerged);
@@ -142,6 +148,12 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
         if (merged.size() == 0)
             done = true;
     }
+
+    // clean up 
+    for (it = lastmerged.begin(); it != lastmerged.end(); ++it){
+        delete (*it);
+    }
+
     return essential;
 }
 
@@ -272,4 +284,17 @@ int main(int argc, char** argv){
     bool** pichart = buildPI(ones, merged);
 
     printPIchart(pichart, ones, merged);
+
+    // clean up
+    for (int i = 0; i < terms.size(); ++i){
+        delete terms[i];
+    }
+    for (int i = 0; i < merged.size(); ++i){
+        delete merged[i];
+    }
+
+    for (int i = 0; i < merged.size(); ++i){
+        delete[] pichart[i];
+    }
+    delete[] pichart;
 }
