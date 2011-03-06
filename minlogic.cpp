@@ -163,6 +163,7 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
 }
 
 void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> implicants){
+    /*
     if (implicants.size() == 0){
         printf("No prime implicants for table.\n");
         return;
@@ -187,6 +188,7 @@ void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> imp
         }
         printf("\n");
     }
+    */
 }
 // Build the Prime Implicant Chart
 bool** buildPI(std::vector<Term*> terms, std::vector<Term*> implicants){
@@ -291,131 +293,16 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
         printPIchart(table_, terms_, imps_);
     //}
 
-    // Find minimum sets of prime implicants that cover all terms
-    bool found = false;
-    std::vector< std::pair< std::vector<Term*>, bool* > > groups; // vector of groups
-    std::vector< std::vector<Term*> > fgroups; // terms that resulted in groups that worked
-    std::vector<bool*> g1;
-    int n = 1;
+    // Implement Petrick's method to reduce prime implicant table
 
-    // start with the remaining prime implicants
-    // if any of them can cover all the remaining terms, stop here. 
-    for (int i = 0; i < imps_.size(); ++i){
-        bool* row = table_[i];
-        bool good = true;
-        for (int m = 0; m < terms_.size(); ++m){
-            good = good && row[m];
-        }
-        std::pair< std::vector<Term*>, bool* > group;
-        std::vector<Term*> gvec;
-        gvec.push_back(imps_[i]);
-        group = make_pair(gvec, row);
-        groups.push_back(group);
-
-        if (good){
-            found = true;
-            fgroups.push_back(gvec);
+    // Begin by forming a POS from the table
+    std::vector< std::vector< std::vector<Term*> > > pos;
+    for (int i = 0; i < terms_.size(); ++i){
+        for (int k = 0; k < imps_.size(); ++k){
+            
         }
     }
 
-    // otherwise, continue adding implicants to groups 
-    // until a single group can cover all remaining terms
-    std::vector< std::pair< std::vector<Term*>, bool* > > newgroups;
-    for (n = 2; n < imps_.size() && found == false; ++n){
-        newgroups.clear();
-        printf("Trying groups of size %d\n", n);
-        // for each current group
-        for (int i = 0; i < groups.size(); ++i){
-            // try adding each prime implicant
-            for (int k = 0; k < imps_.size(); ++k){
-
-                // skip if the current group includes this implicant
-                bool contains = false;
-                for (int m = 0; m < groups[i].first.size(); ++m){
-                    if (strncmp(groups[i].first[m]->bits, imps_[k]->bits, imps_[k]->len) == 0){
-                        contains = true;
-                        break;
-                    }
-                }
-                if (contains)
-                    continue;
-
-                std::pair< std::vector<Term*>, bool* > group;
-                std::vector<Term*> gvec;
-                gvec = groups[i].first; // copy old term list
-                gvec.push_back(imps_[k]); // add the new one
-                sort(gvec.begin(), gvec.end());
-
-                // also skip if this would create a group that already exists.
-                for (int m = 0; m < newgroups.size(); ++m){
-                    bool cont = false;
-                    for (int z = 0; z < gvec.size(); ++z){
-                        if (strncmp(gvec[z]->bits, newgroups[m].first[z]->bits, gvec[z]->len) != 0){
-                            cont = true;
-                            break;
-                        }
-                    }
-                    if (cont == false){
-                        contains = true;
-                        break;
-                    }
-                }
-                if (contains)
-                    continue;
-
-
-                printf("group: ");
-                for (int z = 0; z < groups[i].first.size(); ++z){
-                    printf("%s ", groups[i].first[z]->bits);
-                }
-                printf("\"%s\" old:new  ", imps_[k]->bits);
-
-                bool* row = new bool[terms_.size()];
-                bool good = true;
-                for (int m = 0; m < terms_.size(); ++m){
-                    row[m] = groups[i].second[m] || table_[k][m];
-                    printf(" %c:%c:%c ", groups[i].second[m]?'1':'0', table_[k][m]?'1':'0', row[m]?'1':'0');
-                    good = good && row[m];
-                }
-                printf("\n");
-
-                group = make_pair(gvec, row); // construct the pair
-                newgroups.push_back(group); // add it to the list of new groups.
-
-                // if this covers every term, add it to the list
-                // and set the flag to stop after this iteration
-                if (good){
-                    found = true;
-                    fgroups.push_back(gvec);
-                }
-            }
-        }
-
-        // replace old group list with new one.
-        if (n > 2){
-            for (int i = 0; i < groups.size(); ++i){
-                delete[] groups[i].second;
-            }
-        }
-        groups = newgroups;
-    }
-    // free up memory from group data and the reduced table
-    for (int i = 0; i < newgroups.size(); ++i){
-        delete[] newgroups[i].second;
-    }
-    for (int i = 0; i < imps_.size(); ++i){
-        delete[] table_[i];
-    }
-    delete[] table_;
-
-    // print the groups that cover
-    for (int i = 0; i < fgroups.size(); ++i){
-        printf("Group ");
-        for (int k = 0; k < fgroups[i].size(); ++k){
-            printf("%s ", fgroups[i][k]->bits);
-        }
-        printf(" found to cover remaining terms.\n");
-    }
 
     // find the groups that cover with the fewest literals.
     // (the most dashes)
