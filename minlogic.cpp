@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 #include <math.h>
 #include <string.h>
 
@@ -24,7 +25,10 @@ struct Term{
         memset(bits, '0', sz); 
         bits[sz] = 0;
     }
-    ~Term() {delete[] bits;}
+    ~Term() {
+        delete[] bits;
+        //printf("deleting term which has been copied %d times.\n", copied);
+    }
 
     //create a clone of another term, incrementing the copied counter
     Term( const Term& other ) :
@@ -34,7 +38,7 @@ struct Term{
             bits[len] = 0;
         }
 
-    //overload the 'equals'comparaison operateer
+    //overload the 'equals' comparaison operateer
     bool operator== (const Term& other){
         if (strncmp(bits, other.bits, len) == 0)
             if (dontcare == other.dontcare && essential == other.essential && len == other.len)
@@ -42,6 +46,7 @@ struct Term{
         return false;
     }
 };
+
 
 //displays everything in the term vector one term per line
 //
@@ -158,6 +163,14 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
 }
 
 void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> implicants){
+    if (implicants.size() == 0){
+        printf("No prime implicants for table.\n");
+        return;
+    }
+    if (terms.size() == 0){
+        printf("No terms for table.\n");
+        return;
+    }
     char fmt[50];
     snprintf(fmt, 50, "%%%ds", implicants[0]->len + 2);
     printf(fmt, " ");
@@ -167,7 +180,7 @@ void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> imp
     printf("\n");
 
     for (int i = 0; i < implicants.size(); ++i){
-        printf("%s  ", implicants[i]->bits);
+        printf("%s%c ", implicants[i]->bits, implicants[i]->essential ? '*' : ' ');
         for(int k = 0; k < terms.size(); ++k){
             snprintf(fmt, 50, " %%%ds%%s%%%ds ", (terms[k]->len)/2-1, (terms[k]->len)/2);
             printf(fmt, " ", table[i][k] ? "x" : " ", " "); 
@@ -204,6 +217,239 @@ bool** buildPI(std::vector<Term*> terms, std::vector<Term*> implicants){
         }
     }
     return table;
+}
+
+std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<Term*> implicants){
+    bool** table_ = table;
+    std::vector<Term*> imps_ = implicants;
+    std::vector<Term*> terms_ = terms;
+
+    // TODO: not sure whether this loop is useful or not...
+    //          Apparently it breaks things...
+    bool shrunk = true;
+    //while(shrunk){
+    //    shrunk = false;
+        // if a column has only one 'x', then that implicant is essential.
+        for (int k = 0; k < terms_.size(); ++k){
+            int x = -1;
+            for (int i = 0; i < imps_.size(); ++i){
+                if (table[i][k] && x >= 0){
+                    x = -1;
+                    break;
+                } else if (table[i][k]){
+                    x = i;
+                }
+            }
+            if (x >= 0){
+                // implicant x is essential
+                imps_[x]->essential = true;
+                shrunk = true;
+            }
+        }
+
+        // check if we have any non-essential implicants
+        bool foundnes = false;
+        for (int i = 0; i < implicants.size(); ++i){
+            if (implicants[i]->essential == false){
+                foundnes = true;
+            }
+        }
+        if (foundnes == false){
+            std::vector<Term*> ret;
+            for (int i = 0; i < implicants.size(); ++i){
+                if (implicants[i]->essential)
+                    ret.push_back(implicants[i]);
+            }
+            sort(ret.begin(), ret.end());
+            return ret;
+        }
+
+        // make smaller table without essential implicants and their covered terms
+        imps_.clear();
+        terms_ = terms;
+
+        for (int i = 0; i < implicants.size(); ++i){
+            if (implicants[i]->essential == false){
+                imps_.push_back(implicants[i]);
+
+            } else {
+                for (int k = 0; k < terms.size(); ++k){
+                    if (table[i][k]){
+                        for (int m = 0; m < terms_.size(); ++m){
+                            if (*(terms[k]) == *(terms_[m])){
+                                terms_.erase(terms_.begin() + m);
+                                m--;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        table_ = buildPI(terms_, imps_);
+
+        printPIchart(table_, terms_, imps_);
+    //}
+
+    // Find minimum sets of prime implicants that cover all terms
+    bool found = false;
+    std::vector< std::pair< std::vector<Term*>, bool* > > groups; // vector of groups
+    std::vector< std::vector<Term*> > fgroups; // terms that resulted in groups that worked
+    std::vector<bool*> g1;
+    int n = 1;
+
+    // start with the remaining prime implicants
+    // if any of them can cover all the remaining terms, stop here. 
+    for (int i = 0; i < imps_.size(); ++i){
+        bool* row = table_[i];
+        bool good = true;
+        for (int m = 0; m < terms_.size(); ++m){
+            good = good && row[m];
+        }
+        std::pair< std::vector<Term*>, bool* > group;
+        std::vector<Term*> gvec;
+        gvec.push_back(imps_[i]);
+        group = make_pair(gvec, row);
+        groups.push_back(group);
+
+        if (good){
+            found = true;
+            fgroups.push_back(gvec);
+        }
+    }
+
+    // otherwise, continue adding implicants to groups 
+    // until a single group can cover all remaining terms
+    std::vector< std::pair< std::vector<Term*>, bool* > > newgroups;
+    for (n = 2; n < imps_.size() && found == false; ++n){
+        newgroups.clear();
+        printf("Trying groups of size %d\n", n);
+        // for each current group
+        for (int i = 0; i < groups.size(); ++i){
+            // try adding each prime implicant
+            for (int k = 0; k < imps_.size(); ++k){
+
+                // skip if the current group includes this implicant
+                bool contains = false;
+                for (int m = 0; m < groups[i].first.size(); ++m){
+                    if (strncmp(groups[i].first[m]->bits, imps_[k]->bits, imps_[k]->len) == 0){
+                        contains = true;
+                        break;
+                    }
+                }
+                if (contains)
+                    continue;
+
+                std::pair< std::vector<Term*>, bool* > group;
+                std::vector<Term*> gvec;
+                gvec = groups[i].first; // copy old term list
+                gvec.push_back(imps_[k]); // add the new one
+                sort(gvec.begin(), gvec.end());
+
+                // also skip if this would create a group that already exists.
+                for (int m = 0; m < newgroups.size(); ++m){
+                    bool cont = false;
+                    for (int z = 0; z < gvec.size(); ++z){
+                        if (strncmp(gvec[z]->bits, newgroups[m].first[z]->bits, gvec[z]->len) != 0){
+                            cont = true;
+                            break;
+                        }
+                    }
+                    if (cont == false){
+                        contains = true;
+                        break;
+                    }
+                }
+                if (contains)
+                    continue;
+
+
+                printf("group: ");
+                for (int z = 0; z < groups[i].first.size(); ++z){
+                    printf("%s ", groups[i].first[z]->bits);
+                }
+                printf("\"%s\" old:new  ", imps_[k]->bits);
+
+                bool* row = new bool[terms_.size()];
+                bool good = true;
+                for (int m = 0; m < terms_.size(); ++m){
+                    row[m] = groups[i].second[m] || table_[k][m];
+                    printf(" %c:%c:%c ", groups[i].second[m]?'1':'0', table_[k][m]?'1':'0', row[m]?'1':'0');
+                    good = good && row[m];
+                }
+                printf("\n");
+
+                group = make_pair(gvec, row); // construct the pair
+                newgroups.push_back(group); // add it to the list of new groups.
+
+                // if this covers every term, add it to the list
+                // and set the flag to stop after this iteration
+                if (good){
+                    found = true;
+                    fgroups.push_back(gvec);
+                }
+            }
+        }
+
+        // replace old group list with new one.
+        if (n > 2){
+            for (int i = 0; i < groups.size(); ++i){
+                delete[] groups[i].second;
+            }
+        }
+        groups = newgroups;
+    }
+    // free up memory from group data and the reduced table
+    for (int i = 0; i < newgroups.size(); ++i){
+        delete[] newgroups[i].second;
+    }
+    for (int i = 0; i < imps_.size(); ++i){
+        delete[] table_[i];
+    }
+    delete[] table_;
+
+    // print the groups that cover
+    for (int i = 0; i < fgroups.size(); ++i){
+        printf("Group ");
+        for (int k = 0; k < fgroups[i].size(); ++k){
+            printf("%s ", fgroups[i][k]->bits);
+        }
+        printf(" found to cover remaining terms.\n");
+    }
+
+    // find the groups that cover with the fewest literals.
+    // (the most dashes)
+    std::vector<Term*> mostdash;
+    int max = 0;
+    for (int i = 0; i < fgroups.size(); ++i){
+        int dashes = 0;
+        for (int k = 0; k < fgroups[i].size(); ++k){
+            for (int m = 0; m < fgroups[i][k]->len; ++m){
+                if (fgroups[i][k]->bits[m] == '-')
+                    dashes++;
+            }
+        }
+        if (dashes > max){
+            max = dashes;
+            mostdash = fgroups[i];
+        }
+    }
+
+    printf("Group ");
+    for (int k = 0; k < mostdash.size(); ++k){
+        printf("%s ", mostdash[k]->bits);
+    }
+    printf(" has the fewest literals.\n");
+
+    // add in the essential prime implicants
+    for (int i = 0; i < implicants.size(); ++i){
+        if (implicants[i]->essential)
+            mostdash.push_back(implicants[i]);
+    }
+
+    sort(mostdash.begin(), mostdash.end());
+    return mostdash;
+
 }
 
 int main(int argc, char** argv){
@@ -284,6 +530,31 @@ int main(int argc, char** argv){
     bool** pichart = buildPI(ones, merged);
 
     printPIchart(pichart, ones, merged);
+
+    std::vector<Term*> min = findMin(pichart, ones, merged);
+
+    printPIchart(pichart, ones, merged);
+
+    printf("\n\nF = ");
+    for (int i = 0; i < min.size(); ++i){
+        for (int k = 0; k < min[i]->len; ++k){
+            switch(min[i]->bits[k]){
+                case '1':
+                    printf("%c", 'A'+k);
+                    break;
+
+                case '0':
+                    printf("%c'", 'A'+k);
+                    break;
+            }
+        }
+        if (i < min.size()-1)
+            printf(" + ");
+    }
+    printf("\n");
+
+
+
 
     // clean up
     for (int i = 0; i < terms.size(); ++i){
