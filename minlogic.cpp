@@ -181,9 +181,10 @@ void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> imp
     printf("\n");
 
     for (int i = 0; i < implicants.size(); ++i){
+        int mod = (implicants[i]->len % 2 == 1 ? 0 : 1);
         printf("%s%c ", implicants[i]->bits, implicants[i]->essential ? '*' : ' ');
         for(int k = 0; k < terms.size(); ++k){
-            snprintf(fmt, 50, " %%%ds%%s%%%ds ", (terms[k]->len)/2-1, (terms[k]->len)/2);
+            snprintf(fmt, 50, " %%%ds%%s%%%ds ", (terms[k]->len)/2-mod, (terms[k]->len)/2);
             printf(fmt, " ", table[i][k] ? "x" : " ", " "); 
         }
         printf("\n");
@@ -292,6 +293,144 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
 
         printPIchart(table_, terms_, imps_);
     //}
+    
+    // "Row" dominance -- column dominance here
+    // If a term dominates another term, then the dominating one can be ignored
+    std::vector<Term*> toRemove;
+    for (int i = 0; i < terms_.size(); ++i){
+        for (int k = i+1; k < terms_.size(); ++k){
+            bool domk = true;
+            bool domi = true;
+            for (int m = 0; m < imps_.size(); ++m){
+                if (table_[m][i] == true && table_[m][k] == false){
+                    domi = false;
+                }
+                if (table_[m][k] == true && table_[m][i] == false){
+                    domk = false;
+                }
+            }
+            if (domk){
+                toRemove.push_back(terms_[i]);
+                printf("Col %d dominates col %d\n", i, k);
+            } else if (domi){
+                toRemove.push_back(terms_[k]);
+                printf("Col %d dominates col %d\n", k, i);
+            }
+        }
+    } 
+
+    // remove columns that dominate others
+    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
+    for (int i = 0; i < terms_.size(); ++i){
+        for (int k = 0; k < toRemove.size(); ++k){
+            if (*(toRemove[k]) == *(terms_[i])){
+                toRemove.erase(toRemove.begin() + k);
+                terms_.erase(terms_.begin() + i);
+                i--;
+                break;
+            }
+        }
+    }
+    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
+
+    // clean up old table_
+    for (int i = 0; i < imps_.size(); ++i){
+        delete[] table_[i];
+    }
+    delete[] table_;
+
+    table_ = buildPI(terms_, imps_);
+
+    printPIchart(table_, terms_, imps_);
+
+
+    // "Column" dominance -- actually rows in the table here...
+    // If a prime implicant covers another completely, then the covered one can be ignored
+    toRemove.clear();
+    for (int i = 0; i < imps_.size(); ++i){
+        for (int k = i+1; k < imps_.size(); ++k){
+            bool dom1 = true;
+            bool dom2 = true;
+            for (int m = 0; m < terms_.size(); ++m){
+                if (table_[i][m] == true && table_[k][m] == false){
+                    dom1 = false;
+                }
+                if (table_[k][m] == true && table_[i][m] == false){
+                    dom2 = false;
+                }
+            }
+            if (dom2){
+                toRemove.push_back(imps_[k]);
+                printf("Row %d dominates row %d\n", i, k);
+            } else if (dom1){
+                toRemove.push_back(imps_[i]);
+                printf("Row %d dominates row %d\n", k, i);
+            }
+        }
+    }
+
+    // remove rows that are dominated
+    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
+    bool* impignore = new bool[imps_.size()];
+    for (int i = 0; i < imps_.size(); ++i){
+        impignore[i] = false;
+    }
+    int impidx = 0;
+    int impsize = imps_.size();
+    for (int i = 0; i < imps_.size(); ++i){
+        for (int k = 0; k < toRemove.size(); ++k){
+            if (*(toRemove[k]) == *(imps_[i])){
+                toRemove.erase(toRemove.begin() + k);
+                imps_.erase(imps_.begin() + i);
+                impignore[impidx] = true;
+                i--;
+                break;
+            }
+        }
+        impidx++;
+    }
+
+    // now remove terms that are unused
+    toRemove.clear();
+    for (int k = 0; k < terms_.size(); ++k){
+        bool hastrue = false;
+        for (int i = 0; i < impsize; ++i){
+            if (impignore[i] == false)
+                hastrue = hastrue || table_[i][k];
+        }
+        if (hastrue == false){
+            toRemove.push_back(terms_[k]);
+        }
+    }
+    for (int i = 0; i < terms_.size(); ++i){
+        for (int k = 0; k < toRemove.size(); ++k){
+            if (*(toRemove[k]) == *(terms_[i])){
+                toRemove.erase(toRemove.begin() + k);
+                terms_.erase(terms_.begin() + 1);
+                i--;
+                break;
+            }
+        }
+    }
+    // clean up the impignore table
+    delete[] impignore;
+    impignore = NULL;
+
+    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
+
+    // clean up old table_
+    for (int i = 0; i < impsize; ++i){
+        delete[] table_[i];
+    }
+    delete[] table_;
+
+    table_ = buildPI(terms_, imps_);
+    impsize = imps_.size();
+
+    printPIchart(table_, terms_, imps_);
+
+    
+
 
     // Implement Petrick's method to reduce prime implicant table
 
