@@ -47,6 +47,11 @@ struct Term{
     }
 };
 
+bool vectorSizeCompare( const std::vector<Term*> left, const std::vector<Term*> right ){
+    return left.size() < right.size();
+}
+
+
 
 //displays everything in the term vector one term per line
 //
@@ -163,7 +168,6 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
 }
 
 void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> implicants){
-    /*
     if (implicants.size() == 0){
         printf("No prime implicants for table.\n");
         return;
@@ -189,7 +193,6 @@ void printPIchart(bool** table, std::vector<Term*> terms, std::vector<Term*> imp
         }
         printf("\n");
     }
-    */
 }
 // Build the Prime Implicant Chart
 bool** buildPI(std::vector<Term*> terms, std::vector<Term*> implicants){
@@ -266,6 +269,8 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
             sort(ret.begin(), ret.end());
             return ret;
         }
+
+        printPIchart(table_, terms_, imps_);
 
         // make smaller table without essential implicants and their covered terms
         imps_.clear();
@@ -437,27 +442,150 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     // Begin by forming a POS from the table
     std::vector< std::vector< std::vector<Term*> > > pos;
     for (int i = 0; i < terms_.size(); ++i){
+        std::vector< std::vector< Term* > > sop;
         for (int k = 0; k < imps_.size(); ++k){
-            
+            if (table_[k][i]){
+                std::vector< Term* > p;
+                p.push_back(imps_[k]);
+
+                sop.push_back(p);
+            }
+        }
+        pos.push_back(sop);
+    }
+
+    for (int i = 0; i < pos.size(); ++i){
+        printf("( ");
+        for (int k = 0; k < pos[i].size(); ++k){
+            for (int m = 0; m < pos[i][k].size(); ++m){
+                printf("[%s]", pos[i][k][m]->bits);
+            }
+            if (k != pos[i].size()-1)
+                printf(" + ");
+        }
+        printf(" )");
+    }
+    printf("\n");
+
+    // distribute until we have a single sum of products.
+    while(pos.size() > 1){
+        printf("pos size: %d\n", pos.size());
+        // distribute pos[0] onto pos[1]
+        std::vector< std::vector< Term* > > t1 = pos[0];
+        std::vector< std::vector< Term* > > t2 = pos[1];
+
+        std::vector< std::vector< Term* > > res;
+        for (int i = 0; i < t1.size(); ++i){
+            for (int k = 0; k < t2.size(); ++k){
+                std::vector< Term* > p;
+                p.insert(p.begin(), t1[i].begin(), t1[i].end());
+                p.insert(p.end(), t2[k].begin(), t2[k].end());
+
+                // remove duplicates
+                for (int m = 0; m < p.size(); ++m){
+                    for (int n = m+1; n < p.size(); ++n){
+                        if (*(p[m]) == *(p[n])){
+                            p.erase(p.begin() + n);
+                            n--;
+                        }
+                    }
+                }
+                sort(p.begin(), p.end());
+                res.push_back(p);
+            }
+        }
+        // sort res by size of vectors
+        sort(res.begin(), res.end(), vectorSizeCompare);
+
+        // clean up anything that is covered by another term in the list
+//        printf("( ");
+//        for (int k = 0; k < res.size(); ++k){
+//            for (int m = 0; m < res[k].size(); ++m){
+//                printf("[%s]", res[k][m]->bits);
+//            }
+//            if (k != res.size()-1)
+//                printf(" + ");
+//        }
+//        printf(" )");
+//        printf("\n");
+
+        // for each product in res
+        for (int i = 0; i < res.size(); ++i){
+            // for each other product in res
+            for (int k = i+1; k < res.size(); ++k){
+                bool containsi = true;
+                // check is res[i] is contained in res[k]
+                // since res is sorted by size, res[k] cannot contain res[i]
+                // unless res[i] == res[k]
+                for (int m = 0; m < res[i].size(); ++m){
+                    bool containsim = false;
+                    for (int n = 0; n < res[k].size(); ++n){
+                        if (res[i][m] == res[k][n]){
+                            containsim = true;
+                            break;
+                        }
+                    }
+                    if (containsim == false){
+                        containsi = false;
+                        break;
+                    }
+                }
+                if (containsi){
+                    // remove res[k] from res.
+                    //printf("removing res[%d] from res\n",k);
+                    res.erase(res.begin() + k);
+                    k--;
+                }
+            }
+        }
+        pos.erase(pos.begin());
+        pos.erase(pos.begin());
+        pos.insert(pos.begin(), res);
+//        for (int i = 0; i < pos.size(); ++i){
+//            printf("( ");
+//            for (int k = 0; k < pos[i].size(); ++k){
+//                for (int m = 0; m < pos[i][k].size(); ++m){
+//                    printf("[%s]", pos[i][k][m]->bits);
+//                }
+//                if (k != pos[i].size()-1)
+//                    printf(" + ");
+//            }
+//            printf(" )");
+//        }
+//        printf("\n");
+    }
+
+    // sort by size
+    sort(pos[0].begin(), pos[0].end(), vectorSizeCompare);
+    std::vector< std::vector<Term*> > best;
+    if (pos[0].size() > 0){
+        int size = pos[0][0].size();
+        best.push_back(pos[0][0]);
+        // get all products with minimum size
+        for (int i = 1; i < pos[0].size(); ++i){
+            if (pos[0][i].size() == size){
+                best.push_back(pos[0][i]);
+            } else {
+                break;
+            }
         }
     }
 
-
-    // find the groups that cover with the fewest literals.
+    // find the ones that cover with the fewest literals.
     // (the most dashes)
     std::vector<Term*> mostdash;
     int max = 0;
-    for (int i = 0; i < fgroups.size(); ++i){
+    for (int i = 0; i < best.size(); ++i){
         int dashes = 0;
-        for (int k = 0; k < fgroups[i].size(); ++k){
-            for (int m = 0; m < fgroups[i][k]->len; ++m){
-                if (fgroups[i][k]->bits[m] == '-')
+        for (int k = 0; k < best[i].size(); ++k){
+            for (int m = 0; m < best[i][k]->len; ++m){
+                if (best[i][k]->bits[m] == '-')
                     dashes++;
             }
         }
         if (dashes > max){
             max = dashes;
-            mostdash = fgroups[i];
+            mostdash = best[i];
         }
     }
 
@@ -475,7 +603,6 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
 
     sort(mostdash.begin(), mostdash.end());
     return mostdash;
-
 }
 
 int main(int argc, char** argv){
@@ -555,22 +682,20 @@ int main(int argc, char** argv){
     // build prime implicant chart
     bool** pichart = buildPI(ones, merged);
 
-    printPIchart(pichart, ones, merged);
+    //printPIchart(pichart, ones, merged);
 
     std::vector<Term*> min = findMin(pichart, ones, merged);
-
-    printPIchart(pichart, ones, merged);
 
     printf("\n\nF = ");
     for (int i = 0; i < min.size(); ++i){
         for (int k = 0; k < min[i]->len; ++k){
             switch(min[i]->bits[k]){
                 case '1':
-                    printf("%c", 'A'+k);
+                    printf("%c ", 'A'+k);
                     break;
 
                 case '0':
-                    printf("%c'", 'A'+k);
+                    printf("%c' ", 'A'+k);
                     break;
             }
         }
