@@ -469,90 +469,136 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
 
     // distribute until we have a single sum of products.
     while(pos.size() > 1){
-        printf("pos size: %d\n", pos.size());
-        // distribute pos[0] onto pos[1]
-        std::vector< std::vector< Term* > > t1 = pos[0];
-        std::vector< std::vector< Term* > > t2 = pos[1];
+        std::vector< std::vector< std::vector<Term*> > > toAdd;
+        for (int z = 0; z < pos.size()-1; z+=2){
 
-        std::vector< std::vector< Term* > > res;
-        for (int i = 0; i < t1.size(); ++i){
-            for (int k = 0; k < t2.size(); ++k){
-                std::vector< Term* > p;
-                p.insert(p.begin(), t1[i].begin(), t1[i].end());
-                p.insert(p.end(), t2[k].begin(), t2[k].end());
+            printf("pos size: %d toAddSize: %d\n", pos.size(), toAdd.size());
+            // distribute pos[z] onto pos[z+1]
+            std::vector< std::vector< Term* > > t1 = pos[z];
+            std::vector< std::vector< Term* > > t2 = pos[z+1];
 
-                // remove duplicates
-                for (int m = 0; m < p.size(); ++m){
-                    for (int n = m+1; n < p.size(); ++n){
-                        if (*(p[m]) == *(p[n])){
-                            p.erase(p.begin() + n);
-                            n--;
+            std::vector< std::vector< Term* > > res;
+            for (int i = 0; i < t1.size(); ++i){
+                printf("res size == %d\n", res.size());
+                for (int k = 0; k < t2.size(); ++k){
+                    std::vector< Term* > p;
+                    p.insert(p.begin(), t1[i].begin(), t1[i].end());
+                    p.insert(p.end(), t2[k].begin(), t2[k].end());
+
+                    // remove duplicates
+                    for (int m = 0; m < p.size(); ++m){
+                        for (int n = m+1; n < p.size(); ++n){
+                            if (*(p[m]) == *(p[n])){
+                                p.erase(p.begin() + n);
+                                n--;
+                            }
                         }
                     }
-                }
-                sort(p.begin(), p.end());
-                res.push_back(p);
-            }
-        }
-        // sort res by size of vectors
-        sort(res.begin(), res.end(), vectorSizeCompare);
+                    sort(p.begin(), p.end());
 
-        // clean up anything that is covered by another term in the list
-//        printf("( ");
-//        for (int k = 0; k < res.size(); ++k){
-//            for (int m = 0; m < res[k].size(); ++m){
-//                printf("[%s]", res[k][m]->bits);
-//            }
-//            if (k != res.size()-1)
-//                printf(" + ");
-//        }
-//        printf(" )");
-//        printf("\n");
-
-        // for each product in res
-        for (int i = 0; i < res.size(); ++i){
-            // for each other product in res
-            for (int k = i+1; k < res.size(); ++k){
-                bool containsi = true;
-                // check is res[i] is contained in res[k]
-                // since res is sorted by size, res[k] cannot contain res[i]
-                // unless res[i] == res[k]
-                for (int m = 0; m < res[i].size(); ++m){
-                    bool containsim = false;
-                    for (int n = 0; n < res[k].size(); ++n){
-                        if (res[i][m] == res[k][n]){
-                            containsim = true;
+                    // check if this is already in res or is covered by something already there.
+                    //printf("checking whether to add p to res or not.\n");
+                    bool pcontainsi = false;
+                    for (int i = 0; i < res.size(); ++i){
+                        // if p is smaller than res[i], it cannot contain res[i]
+                        if (p.size() < res[i].size()){
+                            continue;
+                        }
+                        bool containsi = true;
+                        // check is res[i] is contained in p
+                        for (int m = 0; m < res[i].size(); ++m){
+                            bool containsim = false;
+                            for (int n = 0; n < p.size(); ++n){
+                                if (res[i][m] == p[n]){
+                                    containsim = true;
+                                    break;
+                                }
+                            }
+                            if (containsim == false){
+                                containsi = false;
+                                break;
+                            }
+                        }
+                        if (containsi){
+                            pcontainsi = true;
                             break;
                         }
                     }
-                    if (containsim == false){
-                        containsi = false;
-                        break;
+                    // if p is new, add it to res
+                    if (pcontainsi == false){
+                        res.push_back(p);
                     }
-                }
-                if (containsi){
-                    // remove res[k] from res.
-                    //printf("removing res[%d] from res\n",k);
-                    res.erase(res.begin() + k);
-                    k--;
+                    //printf("Done checking whether to add p to res or not. -- We %s\n", pcontainsi?"didn't":"did");
                 }
             }
+            // sort res by size of vectors
+            sort(res.begin(), res.end(), vectorSizeCompare);
+
+    //        printf("( ");
+    //        for (int k = 0; k < res.size(); ++k){
+    //            for (int m = 0; m < res[k].size(); ++m){
+    //                printf("[%s]", res[k][m]->bits);
+    //            }
+    //            if (k != res.size()-1)
+    //                printf(" + ");
+    //        }
+    //        printf(" )");
+    //        printf("\n");
+
+            // clean up anything that is covered by another term in the list
+            // for each product in res
+            printf("Cleaning up res -- size: %d\n", res.size());
+            for (int i = 0; i < res.size(); ++i){
+                // for each other product in res
+                if (i%100==0){
+                    printf("  On i==%d, res.size == %d\n", i, res.size());
+                }
+                for (int k = i+1; k < res.size(); ++k){
+                    bool containsi = true;
+                    // check is res[i] is contained in res[k]
+                    // since res is sorted by size, res[k] cannot contain res[i]
+                    // unless res[i] == res[k]
+                    for (int m = 0; m < res[i].size(); ++m){
+                        bool containsim = false;
+                        for (int n = 0; n < res[k].size(); ++n){
+                            if (res[i][m] == res[k][n]){
+                                containsim = true;
+                                break;
+                            }
+                        }
+                        if (containsim == false){
+                            containsi = false;
+                            break;
+                        }
+                    }
+                    if (containsi){
+                        // remove res[k] from res.
+                        //printf("removing res[%d] from res\n",k);
+                        res.erase(res.begin() + k);
+                        k--;
+                    }
+                }
+            }
+            printf("Done cleaning up res\n");
+            toAdd.push_back(res);
         }
-        pos.erase(pos.begin());
-        pos.erase(pos.begin());
-        pos.insert(pos.begin(), res);
-//        for (int i = 0; i < pos.size(); ++i){
-//            printf("( ");
-//            for (int k = 0; k < pos[i].size(); ++k){
-//                for (int m = 0; m < pos[i][k].size(); ++m){
-//                    printf("[%s]", pos[i][k][m]->bits);
-//                }
-//                if (k != pos[i].size()-1)
-//                    printf(" + ");
-//            }
-//            printf(" )");
-//        }
-//        printf("\n");
+        for (int i = 0; i < toAdd.size(); ++i){
+            pos.erase(pos.begin() + i);
+            pos.erase(pos.begin() + i);
+            pos.insert(pos.begin(), toAdd[i]);
+        }
+        for (int i = 0; i < pos.size(); ++i){
+            printf("( ");
+            for (int k = 0; k < pos[i].size(); ++k){
+                for (int m = 0; m < pos[i][k].size(); ++m){
+                    printf("[%s]", pos[i][k][m]->bits);
+                }
+                if (k != pos[i].size()-1)
+                    printf(" + ");
+            }
+            printf(" )");
+        }
+        printf("\n");
     }
 
     // sort by size
