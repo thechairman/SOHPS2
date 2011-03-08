@@ -395,28 +395,6 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
         impidx++;
     }
 
-    // now remove terms that are unused
-    toRemove.clear();
-    for (int k = 0; k < terms_.size(); ++k){
-        bool hastrue = false;
-        for (int i = 0; i < impsize; ++i){
-            if (impignore[i] == false)
-                hastrue = hastrue || table_[i][k];
-        }
-        if (hastrue == false){
-            toRemove.push_back(terms_[k]);
-        }
-    }
-    for (int i = 0; i < terms_.size(); ++i){
-        for (int k = 0; k < toRemove.size(); ++k){
-            if (*(toRemove[k]) == *(terms_[i])){
-                toRemove.erase(toRemove.begin() + k);
-                terms_.erase(terms_.begin() + 1);
-                i--;
-                break;
-            }
-        }
-    }
     // clean up the impignore table
     delete[] impignore;
     impignore = NULL;
@@ -485,6 +463,10 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
             }
         }
     }
+    delete[] covered;
+    covered = NULL;
+    delete[] used;
+    used = NULL;
 
 
 
