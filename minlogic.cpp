@@ -435,220 +435,67 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     printPIchart(table_, terms_, imps_);
 
     
+    // Greedy algorithm
+    // Always choose the implicant that covers the most uncovered terms
 
-
-    // Implement Petrick's method to reduce prime implicant table
-
-    // Begin by forming a POS from the table
-    std::vector< std::vector< std::vector<Term*> > > pos;
+    // so we don't have to keep recreating the table...
+    bool* covered = new bool[terms_.size()];
     for (int i = 0; i < terms_.size(); ++i){
-        std::vector< std::vector< Term* > > sop;
-        for (int k = 0; k < imps_.size(); ++k){
-            if (table_[k][i]){
-                std::vector< Term* > p;
-                p.push_back(imps_[k]);
-
-                sop.push_back(p);
-            }
-        }
-        pos.push_back(sop);
+        covered[i] = false;
+    }
+    bool* used = new bool[imps_.size()];
+    for (int i = 0; i < imps_.size(); ++i){
+        used[i] = false;
     }
 
-    for (int i = 0; i < pos.size(); ++i){
-        printf("( ");
-        for (int k = 0; k < pos[i].size(); ++k){
-            for (int m = 0; m < pos[i][k].size(); ++m){
-                printf("[%s]", pos[i][k][m]->bits);
+    int colsleft = terms_.size();
+    std::vector<Term*> chosen;
+    
+    // while there are uncovered cols
+    while(colsleft > 0){
+
+        // loop over implicants and find the one that covers the most terms
+        int maxcols = 0;
+        int impidx = 0;
+        for (int i = 0; i < imps_.size(); ++i){
+            if (used[i]){
+                continue;
             }
-            if (k != pos[i].size()-1)
-                printf(" + ");
-        }
-        printf(" )");
-    }
-    printf("\n");
+            int cols = 0;
+            for (int k = 0; k < terms_.size(); ++k){
+                if (covered[k]){
+                    continue;
+                }
 
-    // distribute until we have a single sum of products.
-    while(pos.size() > 1){
-        std::vector< std::vector< std::vector<Term*> > > toAdd;
-        for (int z = 0; z < pos.size()-1; z+=2){
-
-            printf("pos size: %d toAddSize: %d\n", pos.size(), toAdd.size());
-            // distribute pos[z] onto pos[z+1]
-            std::vector< std::vector< Term* > > t1 = pos[z];
-            std::vector< std::vector< Term* > > t2 = pos[z+1];
-
-            std::vector< std::vector< Term* > > res;
-            for (int i = 0; i < t1.size(); ++i){
-                printf("res size == %d\n", res.size());
-                for (int k = 0; k < t2.size(); ++k){
-                    std::vector< Term* > p;
-                    p.insert(p.begin(), t1[i].begin(), t1[i].end());
-                    p.insert(p.end(), t2[k].begin(), t2[k].end());
-
-                    // remove duplicates
-                    for (int m = 0; m < p.size(); ++m){
-                        for (int n = m+1; n < p.size(); ++n){
-                            if (*(p[m]) == *(p[n])){
-                                p.erase(p.begin() + n);
-                                n--;
-                            }
-                        }
-                    }
-                    sort(p.begin(), p.end());
-
-                    // check if this is already in res or is covered by something already there.
-                    //printf("checking whether to add p to res or not.\n");
-                    bool pcontainsi = false;
-                    for (int i = 0; i < res.size(); ++i){
-                        // if p is smaller than res[i], it cannot contain res[i]
-                        if (p.size() < res[i].size()){
-                            continue;
-                        }
-                        bool containsi = true;
-                        // check is res[i] is contained in p
-                        for (int m = 0; m < res[i].size(); ++m){
-                            bool containsim = false;
-                            for (int n = 0; n < p.size(); ++n){
-                                if (res[i][m] == p[n]){
-                                    containsim = true;
-                                    break;
-                                }
-                            }
-                            if (containsim == false){
-                                containsi = false;
-                                break;
-                            }
-                        }
-                        if (containsi){
-                            pcontainsi = true;
-                            break;
-                        }
-                    }
-                    // if p is new, add it to res
-                    if (pcontainsi == false){
-                        res.push_back(p);
-                    }
-                    //printf("Done checking whether to add p to res or not. -- We %s\n", pcontainsi?"didn't":"did");
+                if (table_[i][k]){
+                    cols++;
                 }
             }
-            // sort res by size of vectors
-            sort(res.begin(), res.end(), vectorSizeCompare);
-
-    //        printf("( ");
-    //        for (int k = 0; k < res.size(); ++k){
-    //            for (int m = 0; m < res[k].size(); ++m){
-    //                printf("[%s]", res[k][m]->bits);
-    //            }
-    //            if (k != res.size()-1)
-    //                printf(" + ");
-    //        }
-    //        printf(" )");
-    //        printf("\n");
-
-            // clean up anything that is covered by another term in the list
-            // for each product in res
-            printf("Cleaning up res -- size: %d\n", res.size());
-            for (int i = 0; i < res.size(); ++i){
-                // for each other product in res
-                if (i%100==0){
-                    printf("  On i==%d, res.size == %d\n", i, res.size());
-                }
-                for (int k = i+1; k < res.size(); ++k){
-                    bool containsi = true;
-                    // check is res[i] is contained in res[k]
-                    // since res is sorted by size, res[k] cannot contain res[i]
-                    // unless res[i] == res[k]
-                    for (int m = 0; m < res[i].size(); ++m){
-                        bool containsim = false;
-                        for (int n = 0; n < res[k].size(); ++n){
-                            if (res[i][m] == res[k][n]){
-                                containsim = true;
-                                break;
-                            }
-                        }
-                        if (containsim == false){
-                            containsi = false;
-                            break;
-                        }
-                    }
-                    if (containsi){
-                        // remove res[k] from res.
-                        //printf("removing res[%d] from res\n",k);
-                        res.erase(res.begin() + k);
-                        k--;
-                    }
-                }
+            if (cols > maxcols){
+                maxcols = cols;
+                impidx = i;
             }
-            printf("Done cleaning up res\n");
-            toAdd.push_back(res);
         }
-        for (int i = 0; i < toAdd.size(); ++i){
-            pos.erase(pos.begin() + i);
-            pos.erase(pos.begin() + i);
-            pos.insert(pos.begin(), toAdd[i]);
-        }
-        for (int i = 0; i < pos.size(); ++i){
-            printf("( ");
-            for (int k = 0; k < pos[i].size(); ++k){
-                for (int m = 0; m < pos[i][k].size(); ++m){
-                    printf("[%s]", pos[i][k][m]->bits);
-                }
-                if (k != pos[i].size()-1)
-                    printf(" + ");
-            }
-            printf(" )");
-        }
-        printf("\n");
-    }
-
-    // sort by size
-    sort(pos[0].begin(), pos[0].end(), vectorSizeCompare);
-    std::vector< std::vector<Term*> > best;
-    if (pos[0].size() > 0){
-        int size = pos[0][0].size();
-        best.push_back(pos[0][0]);
-        // get all products with minimum size
-        for (int i = 1; i < pos[0].size(); ++i){
-            if (pos[0][i].size() == size){
-                best.push_back(pos[0][i]);
-            } else {
-                break;
+        chosen.push_back(imps_[impidx]);
+        used[impidx] = true;
+        for (int i = 0; i < terms_.size(); ++i){
+            if (table_[impidx][i]){
+                covered[i] = true;
+                colsleft--;
             }
         }
     }
 
-    // find the ones that cover with the fewest literals.
-    // (the most dashes)
-    std::vector<Term*> mostdash;
-    int max = 0;
-    for (int i = 0; i < best.size(); ++i){
-        int dashes = 0;
-        for (int k = 0; k < best[i].size(); ++k){
-            for (int m = 0; m < best[i][k]->len; ++m){
-                if (best[i][k]->bits[m] == '-')
-                    dashes++;
-            }
-        }
-        if (dashes > max){
-            max = dashes;
-            mostdash = best[i];
-        }
-    }
 
-    printf("Group ");
-    for (int k = 0; k < mostdash.size(); ++k){
-        printf("%s ", mostdash[k]->bits);
-    }
-    printf(" has the fewest literals.\n");
 
     // add in the essential prime implicants
     for (int i = 0; i < implicants.size(); ++i){
         if (implicants[i]->essential)
-            mostdash.push_back(implicants[i]);
+            chosen.push_back(implicants[i]);
     }
 
-    sort(mostdash.begin(), mostdash.end());
-    return mostdash;
+    sort(chosen.begin(), chosen.end());
+    return chosen;
 }
 
 int main(int argc, char** argv){
