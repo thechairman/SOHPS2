@@ -346,12 +346,13 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
 
         table_ = buildPI(terms_, imps_);
 
-        printPIchart(table_, terms_, imps_);
+        //printPIchart(table_, terms_, imps_);
     //}
     
+    std::vector<Term*> toRemove;
+    /*
     // "Row" dominance -- column dominance here
     // If a term dominates another term, then the dominating one can be ignored
-    std::vector<Term*> toRemove;
     for (int i = 0; i < terms_.size(); ++i){
         for (int k = i+1; k < terms_.size(); ++k){
             bool domk = true;
@@ -397,7 +398,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     table_ = buildPI(terms_, imps_);
 
     printPIchart(table_, terms_, imps_);
-
+    */
 
     // "Column" dominance -- actually rows in the table here...
     // If a prime implicant covers another completely, then the covered one can be ignored
@@ -416,16 +417,16 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
             }
             if (dom2){
                 toRemove.push_back(imps_[k]);
-                printf("Row %d dominates row %d\n", i, k);
+                //printf("Row %d dominates row %d\n", i, k);
             } else if (dom1){
                 toRemove.push_back(imps_[i]);
-                printf("Row %d dominates row %d\n", k, i);
+                //printf("Row %d dominates row %d\n", k, i);
             }
         }
     }
 
     // remove rows that are dominated
-    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
+    //printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
     bool* impignore = new bool[imps_.size()];
     for (int i = 0; i < imps_.size(); ++i){
         impignore[i] = false;
@@ -449,7 +450,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     delete[] impignore;
     impignore = NULL;
 
-    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
+    //printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
 
     // clean up old table_
     for (int i = 0; i < impsize; ++i){
@@ -460,7 +461,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     table_ = buildPI(terms_, imps_);
     impsize = imps_.size();
 
-    printPIchart(table_, terms_, imps_);
+    //printPIchart(table_, terms_, imps_);
 
     
     // Greedy algorithm
@@ -527,7 +528,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     }
 
     sort(chosen.begin(), chosen.end());
-    printTerms(chosen);
+    //printTerms(chosen);
     return chosen;
 }
 
