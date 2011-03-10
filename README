@@ -7,6 +7,24 @@ To use:
     - Run the program as follows:
         ./minlogic inputfile.txt
 
+The program implements the Quine McCulskey algorithm to minimize the input function. 
+Once the prime implicants have been found, the essential ones are removed from further 
+consideration as they must be part of the solution. 
+The program continues by examining each prime implicant, and if it can be completely covered by another,
+we can remove it from consideration. 
+This reduces the size of the prime implicant coverage chart. 
+
+The final step appriximates a minimum size function. It examines the prime implicant chart
+and selects prime implicants that cover the most uncovered terms. This works quite well, resulting in an 
+actual minimum function frequently. 
+
+The program also supports functions with multiple outputs. 
+In order to use this functionality, the input file must be modified. 
+The first line, which specifies the number of variables, now contains two numbers:
+    -- The number of variables and the numberr of outputs.
+Lines containing the terms must be of the formL
+    010010 1 0 0 d 1 1
+where "1 0 0 d 1 1" are the outputs for the term.
 
 Output of test cases:
 
@@ -18,7 +36,7 @@ Output of test cases:
 
     real	0m0.003s
     user	0m0.000s
-    sys	0m0.000s
+    sys	    0m0.000s
 
 
     Case 2:
@@ -29,7 +47,7 @@ Output of test cases:
 
     real	0m0.067s
     user	0m0.064s
-    sys	0m0.000s
+    sys	    0m0.000s
 
 
     Case 3:
@@ -39,5 +57,5 @@ Output of test cases:
 
     real	0m4.552s
     user	0m4.532s
-    sys	0m0.008s
+    sys	    0m0.008s
 
