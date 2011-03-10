@@ -317,55 +317,6 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     //}
     
     std::vector<Term*> toRemove;
-    /*
-    // "Row" dominance -- column dominance here
-    // If a term dominates another term, then the dominating one can be ignored
-    for (int i = 0; i < terms_.size(); ++i){
-        for (int k = i+1; k < terms_.size(); ++k){
-            bool domk = true;
-            bool domi = true;
-            for (int m = 0; m < imps_.size(); ++m){
-                if (table_[m][i] == true && table_[m][k] == false){
-                    domi = false;
-                }
-                if (table_[m][k] == true && table_[m][i] == false){
-                    domk = false;
-                }
-            }
-            if (domk){
-                toRemove.push_back(terms_[i]);
-                printf("Col %d dominates col %d\n", i, k);
-            } else if (domi){
-                toRemove.push_back(terms_[k]);
-                printf("Col %d dominates col %d\n", k, i);
-            }
-        }
-    } 
-
-    // remove columns that dominate others
-    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
-    for (int i = 0; i < terms_.size(); ++i){
-        for (int k = 0; k < toRemove.size(); ++k){
-            if (*(toRemove[k]) == *(terms_[i])){
-                toRemove.erase(toRemove.begin() + k);
-                terms_.erase(terms_.begin() + i);
-                i--;
-                break;
-            }
-        }
-    }
-    printf("imps size: %d, terms size: %d\n", imps_.size(), terms_.size());
-
-    // clean up old table_
-    for (int i = 0; i < imps_.size(); ++i){
-        delete[] table_[i];
-    }
-    delete[] table_;
-
-    table_ = buildPI(terms_, imps_);
-
-    printPIchart(table_, terms_, imps_);
-    */
 
     // "Column" dominance -- actually rows in the table here...
     // If a prime implicant covers another completely, then the covered one can be ignored
@@ -516,7 +467,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     }
 
     sort(chosen.begin(), chosen.end());
-    printTerms(chosen);
+    //printTerms(chosen);
     return chosen;
 }
 
@@ -601,7 +552,7 @@ int main(int argc, char** argv){
         //printTerms(terms);
 
         //printf("Merged Terms:\n");
-        printTerms(merged);
+        //printTerms(merged);
 
 
         // clear essential flags
