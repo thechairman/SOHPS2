@@ -1,0 +1,43 @@
+Patrick Mealey (plm051000@utdallas.edu) and Joseph Gebhard (jag054100@utdallas.edu)
+
+To compile the programs, run make.
+
+
+To use:
+    - Run the program as follows:
+        ./minlogic inputfile.txt
+
+
+Output of test cases:
+
+    Case 1:
+
+    Out0 = B' C' D F  + C' D E F  + A' D  + A' B' E  + B' D E  + A' B' C' F  + A' C' E F 
+    Prime Implicant Count: 7
+    Literal Count: 24
+
+    real	0m0.003s
+    user	0m0.000s
+    sys	0m0.000s
+
+
+    Case 2:
+
+    Out0 = D' E F G H  + C' D' E F H  + B' D' E G H  + B' C' D' E H  + C' E F G  + A' B' C' G  + A' B' F  + B' C' E G  + A' C' F G  + A' E  + B' E F  + A' D' F G H  + A' C' D' F H  + A' B' D' G H  + A' B' C' D' H 
+    Prime Implicant Count: 15
+    Literal Count: 64
+
+    real	0m0.067s
+    user	0m0.064s
+    sys	0m0.000s
+
+
+    Case 3:
+    Out0 = A' F  + C' D' E' F G J  + A' B' G  + B' C' D' E' F J  + B' C' D' F I  + A' D' G H I  + A' C' D' G I  + A' B' D' H I  + A' B' C' D' I  + A' E' G H I J  + A' B' C' D' E' J  + D' F G H I  + C' D' F G I  + B' D' F H I  + A' C' E' G I J  + A' B' E' H I J  + A' B' D' E' H J  + C' E' F G I J  + B' F G  + B' D' E' F H J  + D' E' F G H J  + B' E' F H I J  + A' C' D' E' G J  + E' F G H I J  + B' C' E' F I J  + A' D' E' G H J  + C' F G H  + B' C' F H  + A' C' G H  + A' B' C' H  + A' B' C' E' I J 
+    Prime Implicant Count: 31
+    Literal Count: 160
+
+    real	0m4.552s
+    user	0m4.532s
+    sys	0m0.008s
+
