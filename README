@@ -7,6 +7,15 @@ To use:
     - Run the program as follows:
         ./minlogic inputfile.txt
 
+The constraints of the program are difficult to specify. 
+It is capable of solving a randomly generated test case with 
+    12 variables and 2024 terms with a '1' or 'd' within 3 minutes,
+    but a 13 variable function with 4080 terms took 13 minutes.
+The number of terms, as well as how cleanly they can be merged
+    seem to have much more effect on the runtime than the actual 
+    number of varibles in the function
+
+
 The program implements the Quine McCulskey algorithm to minimize the input function. 
 Once the prime implicants have been found, the essential ones are removed from further 
 consideration as they must be part of the solution. 
