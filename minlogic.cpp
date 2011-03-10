@@ -69,7 +69,7 @@ void printTerms(std::vector<Term*> terms){
 // we shouldn't need to compare every term to every other term.
 // mergeTermsOnce returns a new vector of merged terms, 
 // and modifies the terms in the input vector to mark those that are essential
-std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
+std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms, std::vector<Term*> complist){
     std::vector<Term*> newterms;
 
     // mark all terms essential
@@ -77,15 +77,19 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
         if (terms[i]->dontcare == false)
             terms[i]->essential = true;
     }
+    for(int i = 0; i < complist.size(); ++i){
+        if (complist[i]->dontcare == false)
+            complist[i]->essential = true;
+    }
     // for each term
     for (int i = 0; i < terms.size(); ++i){
         // for each term after i
-        for (int k = i+1; k < terms.size(); ++k){
+        for (int k = 0; k < complist.size(); ++k){
             int bitdiff = -1;
             // for each bit
-            for (int m = 0; m < terms[i]->len && m < terms[k]->len; ++m){
+            for (int m = 0; m < terms[i]->len && m < complist[k]->len; ++m){
                 // if bits differ
-                if (terms[i]->bits[m] != terms[k]->bits[m]){
+                if (terms[i]->bits[m] != complist[k]->bits[m]){
                     // if this is the second difference, break out
                     if (bitdiff != -1){
                         bitdiff = -1;
@@ -99,9 +103,9 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
             // if there was a single bit difference, merge
             if (bitdiff > -1){
                 terms[i]->essential = false;
-                terms[k]->essential = false;
+                complist[k]->essential = false;
                 Term* new1 = new Term(*terms[i]);
-                if (terms[i]->dontcare == false || terms[k]->dontcare == false)
+                if (terms[i]->dontcare == false || complist[k]->dontcare == false)
                     new1->dontcare=false;
                 new1->bits[bitdiff] = '-';
                 newterms.push_back(new1);
@@ -113,6 +117,7 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
         for (int k = i+1; k < newterms.size(); ++k){
             // if 2 entries match, remove the latter one and continue
             if (strncmp(newterms[i]->bits, newterms[k]->bits, newterms[i]->len) == 0){
+                //printf("deleting %d:%s duplicate of %d:%s\n", k, newterms[k]->bits, i, newterms[i]->bits);
                 delete newterms[k];
                 newterms.erase(newterms.begin() + k);
                 k--;
@@ -123,6 +128,10 @@ std::vector<Term*> mergeTermsOnce(std::vector<Term*> terms){
 }
 
 std::vector<Term*> mergeTerms(std::vector<Term*> terms){
+    if (terms.size() == 0){
+        std::vector<Term*> ret;
+        return ret;
+    }
     std::vector<Term*> merged;
     std::vector<Term*> lastmerged;
 
@@ -135,16 +144,56 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
         merged.push_back(copy);
     }
 
+    // split initial list
+    std::vector< std::vector<Term*> > termlist;
+    for (int i = 0; i < terms[0]->len + 1; ++i){
+        std::vector<Term*> vec;
+        termlist.push_back(vec);
+    }
+    for (int i = 0; i < merged.size(); ++i){
+        int ones = 0;
+        for (int k = 0; k < merged[i]->len; ++k){
+            if (merged[i]->bits[k] == '1'){
+                ones++;
+            }
+        }
+        termlist[ones].push_back(merged[i]);
+    }
+
+
+    merged.clear();
+    // do initial merging -- only try to merge terms with a difference of 1 in quantity of ones
+    for (int i = 0; i < termlist.size()-1; ++i){
+        //printf("termlist[%d] size: %d, termlist[%d] size: %d\n", i, termlist[i].size(), i+1, termlist[i+1].size());
+        std::vector<Term*> newlist = mergeTermsOnce(termlist[i], termlist[i+1]);
+
+        for(int k = 0; k < termlist[i].size(); ++k){
+            if (termlist[i][k]->essential){
+                Term* newterm = new Term(*termlist[i][k]);
+                essential.push_back(newterm);
+            }
+        }
+        if (newlist.size() > 0){
+            merged.insert(merged.end(), newlist.begin(), newlist.end());
+            //printf("Added %d terms to merged (new size: %d)\n", newlist.size(), merged.size());
+        }
+    }
+    //printf("size of essential: %d\n", essential.size());
+
+    // flag to indicate we're finished merging
     bool done = false;
+
     // loop until nothing can be merged.
+    int count = 0;
     while(done == false){
+        //printf("Looped on merge %d times\n", ++count);
         
         for (it = lastmerged.begin(); it != lastmerged.end(); ++it){
             delete (*it);	
         }
 
         lastmerged = merged;
-        merged = mergeTermsOnce(lastmerged);
+        merged = mergeTermsOnce(lastmerged, lastmerged);
 
         // add anything that couldn't be merged to the essential vector
         for(int i = 0; i < lastmerged.size(); ++i){
@@ -271,7 +320,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
             return ret;
         }
 
-        printPIchart(table_, terms_, imps_);
+        //printPIchart(table_, terms_, imps_);
 
         // make smaller table without essential implicants and their covered terms
         imps_.clear();
