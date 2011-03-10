@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 #include <algorithm>
 #include <math.h>
@@ -18,6 +20,7 @@ struct Term{
     bool essential;
     int len;
     int copied;
+    std::vector<char> outputs;
 
     //intiallize an empty term struct
     Term(int sz = 4) : dontcare(false), essential(false), len(sz),copied(0) {
@@ -547,11 +550,18 @@ int main(int argc, char** argv){
 
     // read file header
     int numVars = 0;
+    int numOuts = 1;
     int numTerms = 0;
 
-    infile >> numVars >> numTerms;
+    char firstline[100];
+    infile.getline(firstline, 100);
+    std::stringstream flss (firstline);
 
-    printf("Got numVars: %d, numTerms:%d\n", numVars, numTerms);
+    flss >> numVars >> numOuts;
+
+    infile >> numTerms;
+
+    //printf("Got numVars: %d, numOuts: %d, numTerms:%d\n", numVars, numOuts, numTerms);
 
     std::vector<Term*> terms;
     // begin reading in terms
@@ -570,79 +580,104 @@ int main(int argc, char** argv){
             term->bits[k] = bit;
             // add the term to the list
         }
-        infile >> bit;
-        printf("Got t: %d : %c\n", t, bit);
-        if (bit == 'd')
-            term->dontcare = true;
+        for (int z = 0; z < numOuts; ++z){
+            infile >> bit;
+            term->outputs.push_back(bit);
+        }
 
         terms.push_back(term);
     }
 
+    // for each output...
+    for (int z = 0; z < numOuts; ++z){
 
-    // merge terms
-    std::vector<Term*> merged;
-    merged = mergeTerms(terms);
-    
-    printf("Original Terms:\n");
-    printTerms(terms);
-
-    printf("Merged Terms:\n");
-    printTerms(merged);
-
-
-    // clear essential flags
-    for (int i = 0; i < terms.size(); ++i){
-        terms[i]->essential = false;
-    }
-    for (int i = 0; i < merged.size(); ++i){
-        merged[i]->essential = false;
-    }
-    
-    // get the terms = 1
-    std::vector<Term*> ones;
-    for (int i = 0; i < terms.size(); ++i){
-        if (terms[i]->dontcare == false)
-            ones.push_back(terms[i]);
-    }
-            
-    // build prime implicant chart
-    bool** pichart = buildPI(ones, merged);
-
-    //printPIchart(pichart, ones, merged);
-
-    std::vector<Term*> min = findMin(pichart, ones, merged);
-
-    printf("\n\nF = ");
-    for (int i = 0; i < min.size(); ++i){
-        for (int k = 0; k < min[i]->len; ++k){
-            switch(min[i]->bits[k]){
-                case '1':
-                    printf("%c ", 'A'+k);
-                    break;
-
-                case '0':
-                    printf("%c' ", 'A'+k);
-                    break;
+        // prepare currterms list
+        std::vector<Term*> currterms;
+        for (int i = 0; i < terms.size(); ++i){
+            if (terms[i]->outputs.size() <= z){
+                printf("No output%d value for term %s -- skipping\n", z, terms[i]->bits);
+                continue;
             }
+            if (terms[i]->outputs[z] == '0'){
+                continue;
+            } else if (terms[i]->outputs[z] == 'd'){
+                terms[i]->dontcare = true;
+            } else {
+                terms[i]->dontcare = false;
+            }
+            currterms.push_back(terms[i]);
         }
-        if (i < min.size()-1)
-            printf(" + ");
+
+        // merge terms
+        std::vector<Term*> merged;
+        merged = mergeTerms(currterms);
+        
+        //printf("Original Terms:\n");
+        //printTerms(terms);
+
+        //printf("Merged Terms:\n");
+        //printTerms(merged);
+
+
+        // clear essential flags
+        for (int i = 0; i < currterms.size(); ++i){
+            terms[i]->essential = false;
+        }
+        for (int i = 0; i < merged.size(); ++i){
+            merged[i]->essential = false;
+        }
+        
+        // get the terms = 1
+        std::vector<Term*> ones;
+        for (int i = 0; i < currterms.size(); ++i){
+            if (currterms[i]->dontcare == false)
+                ones.push_back(currterms[i]);
+        }
+                
+        // build prime implicant chart
+        bool** pichart = buildPI(ones, merged);
+
+        //printPIchart(pichart, ones, merged);
+
+        std::vector<Term*> min = findMin(pichart, ones, merged);
+
+        printf("\n\nOut%d = ", z);
+        int lits = 0;
+        for (int i = 0; i < min.size(); ++i){
+            for (int k = 0; k < min[i]->len; ++k){
+                switch(min[i]->bits[k]){
+                    case '1':
+                        printf("%c ", 'A'+k);
+                        lits++;
+                        break;
+
+                    case '0':
+                        printf("%c' ", 'A'+k);
+                        lits++;
+                        break;
+                }
+            }
+            if (i < min.size()-1)
+                printf(" + ");
+        }
+        printf("\nPrime Implicant Count: %d\nLiteral Count: %d\n", min.size(), lits);
+
+
+
+
+        // clean up
+        for (int i = 0; i < merged.size(); ++i){
+            delete merged[i];
+        }
+
+        for (int i = 0; i < merged.size(); ++i){
+            delete[] pichart[i];
+        }
+        delete[] pichart;
     }
-    printf("\n");
-
-
-
 
     // clean up
     for (int i = 0; i < terms.size(); ++i){
         delete terms[i];
     }
-    for (int i = 0; i < merged.size(); ++i){
-        delete merged[i];
-    }
-
-    for (int i = 0; i < merged.size(); ++i){
-        delete[] pichart[i];
-    }
-    delete[] pichart;
 }
