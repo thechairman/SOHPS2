@@ -147,42 +147,6 @@ std::vector<Term*> mergeTerms(std::vector<Term*> terms){
         merged.push_back(copy);
     }
 
-    // split initial list
-    std::vector< std::vector<Term*> > termlist;
-    for (int i = 0; i < terms[0]->len + 1; ++i){
-        std::vector<Term*> vec;
-        termlist.push_back(vec);
-    }
-    for (int i = 0; i < merged.size(); ++i){
-        int ones = 0;
-        for (int k = 0; k < merged[i]->len; ++k){
-            if (merged[i]->bits[k] == '1'){
-                ones++;
-            }
-        }
-        termlist[ones].push_back(merged[i]);
-    }
-
-
-    merged.clear();
-    // do initial merging -- only try to merge terms with a difference of 1 in quantity of ones
-    for (int i = 0; i < termlist.size()-1; ++i){
-        //printf("termlist[%d] size: %d, termlist[%d] size: %d\n", i, termlist[i].size(), i+1, termlist[i+1].size());
-        std::vector<Term*> newlist = mergeTermsOnce(termlist[i], termlist[i+1]);
-
-        for(int k = 0; k < termlist[i].size(); ++k){
-            if (termlist[i][k]->essential){
-                Term* newterm = new Term(*termlist[i][k]);
-                essential.push_back(newterm);
-            }
-        }
-        if (newlist.size() > 0){
-            merged.insert(merged.end(), newlist.begin(), newlist.end());
-            //printf("Added %d terms to merged (new size: %d)\n", newlist.size(), merged.size());
-        }
-    }
-    //printf("size of essential: %d\n", essential.size());
-
     // flag to indicate we're finished merging
     bool done = false;
 
@@ -424,6 +388,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
             } else if (dom1){
                 toRemove.push_back(imps_[i]);
                 //printf("Row %d dominates row %d\n", k, i);
+                break;
             }
         }
     }
@@ -489,6 +454,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
         // loop over implicants and find the one that covers the most terms
         int maxcols = 0;
         int impidx = 0;
+        std::vector<int> atmax;
         for (int i = 0; i < imps_.size(); ++i){
             if (used[i]){
                 continue;
@@ -506,12 +472,31 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
             if (cols > maxcols){
                 maxcols = cols;
                 impidx = i;
+                atmax.clear();
+                atmax.push_back(i);
+            } else if (cols == maxcols){
+                atmax.push_back(i);
             }
         }
-        chosen.push_back(imps_[impidx]);
-        used[impidx] = true;
+        int maxdash = 0;
+        int mdashidx = 0;
+        // find the one with the most dashes
+        for (int i = 0; i < atmax.size(); ++i){
+            int dashes = 0;
+            for (int m = 0; m < imps_[atmax[i]]->len; ++m){
+                if (imps_[atmax[i]]->bits[m] == '-'){
+                    dashes++;
+                }
+            }
+            if (dashes > maxdash){
+                maxdash = dashes;
+                mdashidx = i;
+            }
+        }
+        chosen.push_back(imps_[atmax[mdashidx]]);
+        used[atmax[mdashidx]] = true;
         for (int i = 0; i < terms_.size(); ++i){
-            if (table_[impidx][i] && covered[i] == false){
+            if (table_[atmax[mdashidx]][i] && covered[i] == false){
                 covered[i] = true;
                 colsleft--;
             }
@@ -531,7 +516,7 @@ std::vector<Term*> findMin(bool** table, std::vector<Term*> terms, std::vector<T
     }
 
     sort(chosen.begin(), chosen.end());
-    //printTerms(chosen);
+    printTerms(chosen);
     return chosen;
 }
 
@@ -616,7 +601,7 @@ int main(int argc, char** argv){
         //printTerms(terms);
 
         //printf("Merged Terms:\n");
-        //printTerms(merged);
+        printTerms(merged);
 
 
         // clear essential flags
